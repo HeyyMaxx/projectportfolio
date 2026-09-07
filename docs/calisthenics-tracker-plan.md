@@ -1,6 +1,6 @@
 # Calisthenics Tracker — Build Plan
 
-**Owner:** Marcus Meira · **Status:** planning complete — ready to build · **Last updated:** 2026-09-07 (v3)
+**Owner:** Marcus Meira · **Status:** planning complete — ready to build · **Last updated:** 2026-09-07 (v4)
 
 A personal, offline-first training tracker for calisthenics. Lives on the phone, holds all data
 on-device, and is built to be *used mid-set* — not just filled in afterwards.
@@ -258,14 +258,126 @@ Navigation: bottom tab bar, thumb-reachable. Today is the default tab on launch.
 
 ---
 
-## 8. Technical architecture
+## 8. Visual design system
+
+**Direction: slick modern, punk sharp edges.** The punk lives in the geometry and the type; the
+slickness lives in the spacing and the restraint. Precision, not chaos — a screen-printed gig poster,
+not a ransom note.
+
+### Form rules
+1. **Zero border radius. Everywhere.** Hard 90° corners on every card, button, input, bar and tooltip.
+   This single rule carries most of the punk read — nothing else has to shout.
+2. **Hard offset shadows**, never blurs: `3px 3px 0 var(--accent)` on pressed/active elements. Sticker
+   and screen-print, not Material elevation.
+3. **Thick rules.** 2px borders in ink for containers; 1px hairlines in `--line` for internal structure.
+   Rules are structural, not decorative — they divide, they don't frame.
+4. **Diagonal 45° hazard hatch** as the one texture, used for exactly two things: the *tired* session
+   flag and the running rest timer. Reserved meaning, so it never becomes wallpaper.
+5. **One accent, spent sparingly.** Purple marks *the live thing* — current set, running timer, a PR.
+   If everything is purple, nothing is. Most of the screen is black and white.
+6. **Motion is mechanical.** 120ms, linear or sharp ease-out, no bounce, no crossfade over 150ms.
+   Instant response is the slick half of the brief.
+7. **Dark only in v1.** A light mode of this design isn't a token flip — punk on white is a different
+   poster. Deferred to the backlog rather than half-done.
+
+### Type
+- **Display / numbers:** heavy condensed grotesk, uppercase, tight tracking (-0.02em). Timers, reps,
+  and PR values are the heroes and get set large.
+- **Body / UI:** clean neutral sans, sentence case.
+- **Micro-labels:** 11px, uppercase, wide tracking (0.12em), `--ink-dim`. Exercise names, axis labels, meta.
+- **`font-variant-numeric: tabular-nums` is mandatory** on every timer and counter. Proportional digits
+  make a running clock jitter, which reads as cheap and is exactly the kind of detail that ruins "slick".
+- Two woff2 faces vendored into the repo — no Google Fonts request, because the app must work offline.
+
+### Tokens
+Measured contrast against `--surface`, not estimated.
+
+| Token | Hex | Contrast | Use |
+|---|---|---|---|
+| `--surface` | `#0B0B0C` | — | Page. Near-black, not pure — pure black crushes the offset shadows. |
+| `--surface-1` | `#151517` | — | Cards, raised rows, empty heatmap cells |
+| `--line` | `#2A2A2E` | — | Hairlines, grid, unfilled bar track |
+| `--ink` | `#F5F5F7` | **18.07:1** | Primary text, PR markers |
+| `--ink-muted` | `#A1A1AA` | **7.68:1** | Secondary text, reference series |
+| `--ink-dim` | `#71717A` | **4.07:1** | Micro-labels, axis ticks |
+| `--accent` | `#A855F7` | **4.97:1** | The live thing. Black text on it reads at 4.97:1. |
+| `--accent-bright` | `#C89BFB` | **8.94:1** | Hover, focus ring, PR flash |
+| `--accent-deep` | `#7C3AED` | **3.45:1** | Fills, pressed states, ramp base |
+| `--danger` | `#FF3B30` | **5.55:1** | *The one sanctioned exception to the palette.* |
+
+> **On `--danger`:** the only non-purple hue in the app, reserved for destructive actions — wipe data,
+> overwrite-on-import. A "delete my entire training history" button rendered in brand purple is a
+> flourish that eventually costs real data. Status colors don't get to be part of the aesthetic.
+
+### Accessibility posture — decided, not defaulted
+This is a single-user app and the user has no vision impairments. So:
+
+- **Colorblind-safety checks are deliberately dropped.** They cap how many series a palette can carry,
+  and that cap buys nothing here. Form wins.
+- **Full-color separation is kept** (worst-pair ΔE ≥ 15 in OKLab). This is not a CVD check — it's whether
+  *you* can tell two lines apart at arm's length. Two shades of one purple failed this at ΔE 13.4, which
+  is why the chart system below looks the way it does.
+- **Contrast is kept**, for a reason that isn't accessibility: this app gets read on a phone, at arm's
+  length, mid-set, sometimes in sunlight or a badly lit gym.
+- Texture and direct labels stay where they aid *speed of reading*, and are dropped where they were only
+  ever CVD insurance.
+
+### Chart system
+The palette constraint pushed the information design somewhere better than free choice would have.
+
+**Skills are separated by facets, not color.** Four small-multiple charts, one per skill. Not a
+palette workaround — dead hang (55s) and floor L-sit (6s) cannot share a y-axis without flattening the
+L-sit into a floor-hugging line, and eight lines on a phone is unreadable in any palette. Each facet
+gets its own scale, labeled.
+
+**Condition is primary-vs-reference, not two peer series.** The raw number (floor, bare hands) is the
+honest one, so it leads:
+
+| Role | Mark | Color |
+|---|---|---|
+| Raw — floor / bare hands | 2px solid | `--accent` `#A855F7` |
+| Assisted — parallettes / gloves | 1px dashed | `--ink-muted` `#A1A1AA` |
+
+Separation ΔE 38.2 — unmistakable. Both direct-labeled at the right edge, so identity never rests on
+color alone. And the **gap between the two lines *is* the condition-gap metric from §6** — the thing
+you most want to watch shrink is now literally the whitespace between them.
+
+**Everything else:**
+- **Weekly volume bars** — nominal categories, so bar length carries the value and every bar takes the
+  same `--accent`. Never color-by-value; that spends the identity channel re-encoding the bar length.
+- **Multi-exercise volume** (a day has 3 lifts) — validated 3-step purple, all pairs clear the
+  full-color floor: `#7C3AED` · `#B478F7` · `#E9D5FF` (worst pair ΔE 16.4, all ≥ 3:1).
+- **Consistency heatmap** — validated 5-step sequential ramp, all ordinal checks pass:
+  `#5B21B6` → `#8034E8` → `#A855F7` → `#C89BFB` → `#E9D5FF`. Untrained days are `--surface-1`, not a
+  pale purple — an empty day should read as absence, not as a low value.
+- **Stacked completion bars** — completed in `--accent`, remaining in `--line`, 2px surface gap between
+  segments.
+- **PR markers** — an 8px **square** (squares, not circles — the whole app has no round corners), in
+  `--ink` white. The only white mark in the system, so a PR is unmistakable at a glance.
+- **Tired sessions** — 45° hazard hatch on the mark. Fatigue rides the texture channel, keeping the
+  color channel free for what it already encodes.
+- **Marks & grid** — 2px lines, ≥8px hit targets, horizontal hairline grid only in `--line`, no vertical
+  grid, no chart borders. Crosshair + tooltip on lines, per-mark tooltip on bars and cells.
+- **Text never wears a series color.** Values and labels stay in ink tokens; the colored mark beside
+  them carries the identity.
+
+Palettes were validated by script, not judged by eye — reproducible from the repo:
+```
+validate_palette.js "#7C3AED,#B478F7,#E9D5FF" --mode dark --surface "#0B0B0C" --pairs all
+validate_palette.js "#5B21B6,#8034E8,#A855F7,#C89BFB,#E9D5FF" --ordinal --mode dark --surface "#0B0B0C"
+```
+
+---
+
+## 9. Technical architecture
 
 ```
 calisthenics-tracker/
   index.html            app shell
   manifest.webmanifest  name, icons, display: standalone, theme color
   sw.js                 service worker — cache-first shell, versioned cache
-  css/app.css           design tokens + layout
+  css/app.css           design tokens (§8) + layout
+  fonts/                two vendored woff2 faces — no network request
   js/
     db.js               IndexedDB open/migrate, CRUD
     models.js           schema defaults, validation
@@ -288,13 +400,14 @@ calisthenics-tracker/
 
 ---
 
-## 9. Build phases
+## 10. Build phases
 
 Each phase ends in something installed and usable on the phone. No phase depends on a later one.
 
 ### Phase 0 — Skeleton that installs *(smallest end-to-end slice)*
 - Create repo, enable GitHub Pages.
 - `index.html` + manifest + icons + service worker; bottom tab bar with 5 empty screens.
+- Design tokens from §8 in place, vendored fonts loading, one styled component to prove the look.
 - **Done when:** "Add to Home Screen" gives a fullscreen app that opens in airplane mode.
 
 ### Phase 1 — Data layer + program
@@ -333,7 +446,7 @@ alongside JSON · PT-BR translation · planche progression ladder once it's actu
 
 ---
 
-## 10. Risks & mitigations
+## 11. Risks & mitigations
 
 | Risk | Mitigation |
 |---|---|
@@ -343,12 +456,13 @@ alongside JSON · PT-BR translation · planche progression ladder once it's actu
 | Service worker serves stale code after a deploy | Cache version bumped every release; Settings shows a build hash and a force-update button. |
 | Condition selector adds friction mid-set | Defaults to last used per exercise; changing it is one tap, never required. |
 | `difficultyWeight` is guesswork | Raw reps is the default chart; weighted volume is an opt-in toggle, labeled as a heuristic, with editable weights. |
+| Purple-on-black is beautiful at night and dim in sunlight | `--accent` clears 4.97:1 and text sits on ink tokens, not purple. If a gym proves it out, the fix is raising surface lightness, not repainting the accent. |
 | Over-modelling before real usage | Phases 0–2 are usable alone. Schema changes are cheap while only a handful of sessions exist. |
 | iOS PWA quirks (no push, no background audio for timers) | Accepted for v1. If timer alerts prove essential, evaluate an Expo build later — the data model carries over unchanged. |
 
 ---
 
-## 11. Open questions
+## 12. Open questions
 
 **None blocking.** The program in §2 is complete and Phase 0 is ready to start.
 
@@ -360,7 +474,7 @@ Things deliberately deferred until there's real usage data:
 
 ---
 
-## 12. Working agreement
+## 13. Working agreement
 
 - Plan first, build in phases; each phase ends installed on the phone and actually used before the next starts.
 - This document is the source of truth and gets updated as decisions change — including reversals.
@@ -369,6 +483,11 @@ Things deliberately deferred until there's real usage data:
 ---
 
 ### Changelog
+- **v4 (2026-09-07)** — Added §8, the visual design system: black / white / purple, zero-radius geometry,
+  hard offset shadows, reserved hazard texture, tokens with measured contrast. Chart palettes validated by
+  script. Colorblind-safety checks dropped by decision (single known user, no impairments); full-color
+  separation and contrast kept. Skills facet by chart rather than by color; condition encodes as
+  primary-vs-reference. Dark-only in v1.
 - **v3 (2026-09-07)** — Program complete. Added the fixed warmup sequence and made warmup + skill blocks
   shared across all four days. Skills confirmed as every-session. Dragon flag set to 5×3 / 5×2. Added the
   session `readiness` flag with tired-day prescriptions, a fatigue overlay on charts, and suggestion logic
