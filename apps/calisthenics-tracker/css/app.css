@@ -1,0 +1,177 @@
+/* Calisthenics Tracker — design system (plan §8)
+   Slick modern, punk sharp edges. Black / white / purple.
+   Every value here is a token; nothing downstream hard-codes a colour. */
+
+@font-face {
+  font-family: 'Anton';
+  src: url('../fonts/anton-latin.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-latin-var.woff2') format('woff2-variations'),
+       url('../fonts/inter-latin-var.woff2') format('woff2');
+  font-weight: 400 800; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* Surfaces */
+  --surface:   #0B0B0C;   /* near-black, not pure — pure black kills the offset shadows */
+  --surface-1: #151517;
+  --line:      #2A2A2E;
+
+  /* Ink — contrast measured against --surface */
+  --ink:       #F5F5F7;   /* 18.07:1 */
+  --ink-muted: #A1A1AA;   /*  7.68:1 */
+  --ink-dim:   #71717A;   /*  4.07:1 */
+
+  /* Accent — marks the live thing, and nothing else */
+  --accent:        #A855F7;  /* 4.97:1 */
+  --accent-bright: #C89BFB;  /* 8.94:1 */
+  --accent-deep:   #7C3AED;  /* 3.45:1 */
+
+  /* Reserved. Destructive actions only — never decoration. */
+  --danger: #FF3B30;
+
+  --step: 8px;
+  --tap: 44px;
+  --snap: 120ms;
+
+  --font-display: 'Anton', 'Haettenschweiler', 'Arial Narrow', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Zero radius. Everywhere. This one rule carries the punk read. */
+*, *::before, *::after { box-sizing: border-box; border-radius: 0 !important; }
+
+html { background: var(--surface); }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* ---- Type ---------------------------------------------------------- */
+
+.wordmark, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+.wordmark { font-size: 22px; }
+h2 { font-size: 19px; }
+h3 { font-size: 15px; }
+
+.micro {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+/* Tabular figures are mandatory on anything that counts.
+   Proportional digits make a running timer jitter as the numbers change width. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Chrome -------------------------------------------------------- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--step);
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 12px;
+  background: var(--surface);
+  border-bottom: 2px solid var(--ink);
+}
+
+main {
+  padding: 20px 16px calc(84px + env(safe-area-inset-bottom));
+  outline: none;
+}
+
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar button {
+  appearance: none; -webkit-appearance: none;
+  background: none; border: 0; border-top: 3px solid transparent;
+  min-height: var(--tap);
+  padding: 12px 2px;
+  color: var(--ink-dim);
+  font: inherit; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--snap) linear, border-color var(--snap) linear;
+}
+.tabbar button[aria-current='page'] { color: var(--ink); border-top-color: var(--accent); }
+
+/* ---- Blocks -------------------------------------------------------- */
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+/* The live thing: current set, running timer, a PR. Sparingly. */
+.card--live {
+  border: 2px solid var(--accent);
+  box-shadow: 3px 3px 0 var(--accent);
+}
+
+.rule { height: 1px; background: var(--line); border: 0; margin: 16px 0; }
+
+.stack > * + * { margin-top: 12px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Reserved texture: the tired flag and the running rest timer. Nothing else. */
+.hatch {
+  background-image: repeating-linear-gradient(45deg,
+    var(--accent-deep) 0 6px, transparent 6px 12px);
+}
+
+.btn {
+  appearance: none; -webkit-appearance: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--tap); padding: 0 20px;
+  background: var(--accent); color: var(--surface);
+  border: 2px solid var(--accent);
+  font: inherit; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px;
+  cursor: pointer;
+  transition: transform var(--snap) linear, box-shadow var(--snap) linear;
+  box-shadow: 3px 3px 0 var(--accent-deep);
+}
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--accent-deep); }
+.btn--ghost { background: none; color: var(--ink); border-color: var(--ink); box-shadow: 3px 3px 0 var(--line); }
+
+:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+.empty { color: var(--ink-muted); padding: 32px 0; }
+.empty h2 { color: var(--ink); margin-bottom: 8px; }
+
+/* ---- Phase 0 specimen ---------------------------------------------- */
+
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 2px; }
+.sw { padding: 10px 8px; min-height: 64px; display: flex; flex-direction: column; justify-content: flex-end; border: 1px solid var(--line); }
+.sw span { font-size: 10px; letter-spacing: 0.06em; font-weight: 600; }
