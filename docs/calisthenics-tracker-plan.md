@@ -1,6 +1,6 @@
 # Calisthenics Tracker — Build Plan
 
-**Owner:** Marcus Meira · **Status:** planning (nothing built yet) · **Last updated:** 2026-09-07 (v2 — real program data)
+**Owner:** Marcus Meira · **Status:** planning complete — ready to build · **Last updated:** 2026-09-07 (v3)
 
 A personal, offline-first training tracker for calisthenics. Lives on the phone, holds all data
 on-device, and is built to be *used mid-set* — not just filled in afterwards.
@@ -13,18 +13,44 @@ on-device, and is built to be *used mid-set* — not just filled in afterwards.
 - Data-oriented (data scientist by trade, graphic design by first training) — visual data is a feature, not decoration.
 - **4 sessions per week**, split Back · Push · Core · Legs.
 - Every session runs in the same order:
-  1. **Warmup**
-  2. **Skills** — one *max hold* per skill being practiced
-  3. **Strength** — 5×5 sets (fewer reps where a progression isn't there yet)
+  1. **Warmup** — the same mobility sequence every day
+  2. **Skills** — a max hold of **all four skills, every session**
+  3. **Strength** — the day's lifts, at their own sets × reps
 - **Bodyweight only.** No vest, belt, or bands.
+- **Rest between sets: 3–5 minutes.** Long rests, deliberately — this is strength work, not conditioning.
 - **Progression rule: feel.** Moving up a variant happens when the current one stops being a challenge —
   it is Marcus's call, never the app's. (See §6, "Progression suggestions".)
+- **Fatigue is part of the program**, not an exception: on tired days the reps drop (5×3 → 5×2) rather than
+  the session being skipped. The app has to record that without treating it as failure. (See §5, `readiness`.)
 
 ---
 
 ## 2. The program (as of Sept 2026)
 
 This is the seed data for Phase 1. It is expected to change; the app must make editing it easy.
+
+### Warmup — every session
+Same sequence daily, so it's a checklist rather than something to think about.
+
+| Item | Type |
+|---|---|
+| Wrist stretches | mobility |
+| Neck stretches | mobility |
+| Legs & hip stretches | mobility |
+| Jumping rope | general warmup |
+
+### Skill block — every session
+All four skills are practiced every training day, in every routine. Max hold each.
+
+| Skill | Conditions |
+|---|---|
+| Planche lean | — |
+| L-sit | parallettes · floor |
+| Crow pose | parallettes · floor |
+| Dead hang | gloves · bare |
+
+Because it is identical across all four days, the skill block is defined **once** and referenced by
+each routine — editing it in one place updates every day (see §5, `sharedBlocks`).
 
 ### Back day — pull-up focus
 | Exercise | Prescription | Note |
@@ -50,7 +76,7 @@ Strongest day. Harder variations across the board.
 |---|---|---|
 | Seated leg raises | 5×5 | |
 | Hanging leg raises | 5×5 | |
-| Dragon flag negatives | 5×N, N < 5 | Current dragon flag progression; **not yet at 5×5** |
+| Dragon flag negatives | **5×3** (5×2 when tired) | Current dragon flag progression; not yet at 5×5 |
 
 ### Legs
 | Exercise | Prescription | Note |
@@ -71,13 +97,14 @@ condition is tracked as its own series — see §4.
 | Crow pose | floor | **25 s** |
 | Dead hang | grip gloves | **55 s** |
 | Dead hang | bare hands | **40 s** |
-| Planche lean | — | *not started — no PR yet* |
-| Tuck planche | — | *not started — no PR yet* |
+| Planche lean | — | **seeded at 0 s** — starts next session, so the first hold registers as a PR |
+| Tuck planche | — | *goal rung — not yet trained* |
+| V-sit | — | *goal rung — not yet trained* |
 
 > Two consequences the first draft of this plan got wrong: **5×5 is not universal** (dragon flag
-> negatives run fewer reps, and more exercises will land here as progressions get harder), and
-> **a PR is meaningless without its condition** (a 6 s floor L-sit is a better performance than
-> a 25 s parallette L-sit). Both are now first-class in the model.
+> negatives run 5×3, dropping to 5×2 when tired, and more exercises will land here as progressions get
+> harder), and **a PR is meaningless without its condition** (a 6 s floor L-sit is a better performance
+> than a 25 s parallette L-sit). Both are now first-class in the model.
 
 ---
 
@@ -113,6 +140,9 @@ condition is tracked as its own series — see §4.
 | Prescriptions | **Per-exercise sets × reps**, not a global 5×5 | Dragon flag negatives already break the pattern; harder progressions will too. |
 | Equipment | **`condition` is a dimension, not a separate exercise** | Parallettes vs floor, gloves vs bare hands. Same skill, different difficulty — PRs and chart series split per condition. |
 | Level-ups | **Manual, athlete-triggered** | Progression is by feel. The app may *suggest*; it never auto-advances. |
+| Warmup & skills | **Shared blocks, defined once** | Identical across all four days. Edit in one place, not four. |
+| Rest timer | Default **4:00**, freely adjustable, never a gate | Matches the real 3–5 min range; long rests shouldn't feel policed by an app. |
+| Tired days | **Session-level `readiness` flag** | Reduced reps on a tired day is the plan working, not the plan failing — and it explains dips in the charts. |
 
 ---
 
@@ -134,19 +164,26 @@ Every record carries `id` (uuid) and `updatedAt` (epoch ms) so export/import can
   cues, active, updatedAt }
 ```
 
+### `sharedBlocks` — the warmup and skill blocks
+Identical on all four days, so they live once and every routine points at them.
+```
+{ id, type: 'warmup'|'skill',
+  items: [{ exerciseId, prescription, attempts }], updatedAt }
+```
+
 ### `routines` — the four day templates
 ```
-{ id, name,               // 'Back', 'Push', 'Core', 'Legs'
-  blocks: [
-    { type: 'warmup',   items: [{ exerciseId, prescription }] },
-    { type: 'skill',    items: [{ exerciseId, attempts, condition }] },
-    { type: 'strength', items: [{ exerciseId, sets, reps }] }   // per-exercise, e.g. 5×5 or 5×3
-  ], updatedAt }
+{ id, name,                    // 'Back', 'Push', 'Core', 'Legs'
+  warmupBlockId, skillBlockId, // → sharedBlocks
+  strengthBlock: {
+    items: [{ exerciseId, sets, reps, tiredReps }]   // e.g. 5×5, or 5×3 dropping to 5×2
+  }, updatedAt }
 ```
 
 ### `sessions` — one training day
 ```
 { id, date, routineId, startedAt, endedAt, bodyweightKg, notes,
+  readiness: 'normal'|'tired',     // set at session start; switches prescriptions to tiredReps
   status: 'in-progress'|'completed'|'abandoned', updatedAt }
 ```
 
@@ -182,11 +219,15 @@ Supporting readouts:
 - **PR wall** — best per (exercise × condition), date set, days since. Stale after ~8 weeks.
 - **Progression ladders** — where you stand in each family, with the goal rungs shown greyed out.
   The back day renders as: inverted row → scapular → pull-up → *archer* → *typewriter*.
-- **Progression suggestions** — when the last 3 sessions all hit full prescribed reps, the app raises a
-  gentle "this looks easy now — ready to level up?" prompt. **A suggestion only.** Level-up is a manual
-  action, because the rule is feel.
+- **Progression suggestions** — when the last 3 **normal-readiness** sessions all hit full prescribed reps,
+  the app raises a gentle "this looks easy now — ready to level up?" prompt. **A suggestion only.** Level-up
+  is a manual action, because the rule is feel. Tired sessions are excluded so a rough week never stalls the
+  suggestion, and an easy tired day never triggers one prematurely.
 - **Condition gap** — floor vs parallettes, bare vs gloves, as a shrinking gap over time. The floor and
   bare-hand numbers are the honest ones; watching the gap close is its own progress metric.
+- **Fatigue overlay** — sessions flagged `tired` are marked on every chart. A dip you can explain isn't a
+  plateau, and a PR set on a tired day is worth more than one set fresh. Without this the readiness data
+  would just be noise in the series.
 
 Chart rules: dark theme first, high contrast, readable one-handed at arm's length, no chart junk,
 tap a point to see the underlying session.
@@ -199,12 +240,14 @@ tap a point to see the underlying session.
 
 1. **Today** *(landing screen — the one opened mid-training)*
    - Today's routine, block by block; current item highlighted, everything else collapsed.
-   - **Warmup:** checklist, tap to tick.
+   - **Session start:** one tap — *normal* or *tired*. Tired swaps in the reduced prescriptions.
+   - **Warmup:** fixed checklist (wrists, neck, legs & hips, rope), tap to tick.
    - **Skills:** big hold timer — one tap start, one tap stop. Condition selector right on the timer
      (parallettes/floor, gloves/bare) defaulting to last used. Previous best for *that condition* shown
      inline; beat it → PR flash. Multiple attempts, best counts.
    - **Strength:** sets × reps grid sized from the prescription (5×5, 5×3, whatever it is). Tap a cell
-     to log reps, long-press to edit, rest timer auto-starts.
+     to log reps, long-press to edit, rest timer auto-starts at 4:00 (adjustable, skippable — it counts,
+     it doesn't gate).
    - Screen wake lock while a session is active.
 2. **History** — reverse-chronological sessions; tap into detail; edit past entries.
 3. **Progress** — the four charts, filterable by family and date range.
@@ -256,8 +299,9 @@ Each phase ends in something installed and usable on the phone. No phase depends
 
 ### Phase 1 — Data layer + program
 - `db.js`, `models.js`, migrations.
-- Seed the entire §2 program: 12 strength exercises across 4 days, 4 skills with their conditions,
-  the two goal rungs, and the baseline PRs so the first charts aren't empty.
+- Seed the entire §2 program: the shared warmup and skill blocks, 12 strength exercises across 4 days,
+  4 skills with their conditions, the goal rungs (archer/typewriter pull-up, tuck planche, V-sit), and the
+  baseline PRs so the first charts aren't empty. Planche lean seeded at 0 s.
 - Program screen: create/edit routines and prescriptions.
 - **Done when:** all four days are authored, editable, and survive a force-quit.
 
@@ -306,11 +350,13 @@ alongside JSON · PT-BR translation · planche progression ladder once it's actu
 
 ## 11. Open questions
 
-1. **Warmup** — fixed sequence or improvised? If fixed, what's in it? *(Only real gap left in the seed data.)*
-2. **Rest defaults** — preferred rest between 5×5 sets, and between skill attempts?
-3. **Dragon flag negatives** — what's the current set×rep count, exactly? (Seeded as 5×3 as a placeholder.)
-4. **Skills per day** — all four skills every session, or does the skill block vary by day?
-5. **Planche** — start it in the app now as a 0-baseline (so the first hold is a PR), or add it when you begin?
+**None blocking.** The program in §2 is complete and Phase 0 is ready to start.
+
+Things deliberately deferred until there's real usage data:
+- Whether the skill block should vary by day once planche work gets heavy (four max holds before a back day
+  may cost pull-up quality — the data will show it).
+- Whether `tiredReps` needs to exist per exercise or just as a global "drop one rep" rule.
+- Whether rest should be tracked as actual elapsed time rather than a target.
 
 ---
 
@@ -323,6 +369,10 @@ alongside JSON · PT-BR translation · planche progression ladder once it's actu
 ---
 
 ### Changelog
+- **v3 (2026-09-07)** — Program complete. Added the fixed warmup sequence and made warmup + skill blocks
+  shared across all four days. Skills confirmed as every-session. Dragon flag set to 5×3 / 5×2. Added the
+  session `readiness` flag with tired-day prescriptions, a fatigue overlay on charts, and suggestion logic
+  that ignores tired sessions. Rest default 4:00. Planche lean seeded at 0 s.
 - **v2 (2026-09-07)** — Added the real 4-day program and baseline PRs. Made `condition` (parallettes/floor,
   gloves/bare) a first-class dimension. Replaced global 5×5 with per-exercise prescriptions. Dropped est. 1RM
   and all added-load features. Made level-ups manual with suggestions only. Added progression ladders with goal rungs.
